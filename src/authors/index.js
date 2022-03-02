@@ -17,11 +17,14 @@ authorsRouter.post("/", (req, res) => {
   const newAuthor = { ...req.body, createdAt: new Date(), id: uniqid() };
   console.log("this is the body", req.body.email);
   const authorsArray = JSON.parse(fs.readFileSync(authorsJSONPath));
-  authorsArray.filter((a) => a.email.includes(req.body.email))
-    ? res.status(400).send({ message: "user already exists" })
-    : authorsArray.push(newAuthor);
-  fs.writeFileSync(authorsJSONPath, JSON.stringify(authorsArray));
-  res.status(201).send({ id: newAuthor.id });
+  const exist = authorsArray.some((a) => a.email.includes(req.body.email));
+  if (exist) {
+    res.status(400).send({ message: "user already exists" });
+  } else {
+    authorsArray.push(newAuthor);
+    fs.writeFileSync(authorsJSONPath, JSON.stringify(authorsArray));
+    res.status(201).send({ id: newAuthor.id });
+  }
 });
 
 // GET API Route --- All Authors
