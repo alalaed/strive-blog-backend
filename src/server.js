@@ -1,7 +1,6 @@
 import express from "express";
 import listEndpoints from "express-list-endpoints";
-import authorsRouter from "./authors/index.js";
-// import blogsRouter from "./blogs/index.js";
+
 import cors from "cors";
 import {
   badRequestHandler,
@@ -9,6 +8,8 @@ import {
   unauthorizedHandler,
   serverErrorHandler,
 } from "./errorhandlers.js";
+import authorsRouter from "./authors/index.js";
+import blogsRouter from "./blogs/index.js";
 
 const server = express();
 const port = 3001;
