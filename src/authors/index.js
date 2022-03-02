@@ -26,6 +26,7 @@ authorsRouter.post("/", newAuthorValidation, (req, res, next) => {
       const newAuthor = { ...req.body, createdAt: new Date(), id: uniqid() };
 
       const authorsArray = getAuthor();
+      console.log(authorsArray);
 
       authorsArray.push(newAuthor);
 
@@ -115,6 +116,7 @@ authorsRouter.get("/:authorId", (req, res, next) => {
 authorsRouter.delete("/:authorId", (req, res, next) => {
   try {
     const authorsArray = getAuthor();
+    console.log(authorsArray);
     const author = authorsArray.filter((a) => a.id !== req.params.authorId);
     const modifiedArray = writeAuthor(author);
     res.send(author);

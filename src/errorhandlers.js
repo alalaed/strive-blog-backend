@@ -1,6 +1,6 @@
 export const badRequestHandler = (err, req, res, next) => {
   if (err.status === 400) {
-    res.status(400).send({ message: err.message, errorsList: err.errorList });
+    res.status(400).send({ message: err.message, errorsList: err.errorsList });
   } else {
     next(err);
   }
@@ -24,9 +24,7 @@ export const notFoundHandler = (err, req, res, next) => {
 
 export const serverErrorHandler = (err, req, res, next) => {
   if (err.status === 500) {
-    res
-      .status(500)
-      .send({ message: "sorry mirko fucked up: Internal Server Error" });
+    res.status(500).send({ message: " Internal Server Error" });
   } else {
     next(err);
   }

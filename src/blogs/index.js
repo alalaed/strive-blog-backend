@@ -41,34 +41,6 @@ blogsRouter.post("/", newBlogValidation, (req, res, next) => {
   }
 });
 
-// Email check
-
-blogsRouter.post("/checkEmail", newBlogValidation, (req, res, next) => {
-  try {
-    const errorsList = validationResult(req);
-    if (errorsList.isEmpty()) {
-      const newBlog = { ...req.body, createdAt: new Date(), id: uniqid() };
-      const blogArray = getBlog();
-      const exist = blogArray.some((blog) => blog._id === req.body._id);
-      if (exist) {
-        res.status(400).send({
-          message: "user already exists, please use another email address",
-        });
-      } else {
-        blogArray.push(newBlog);
-        fs.writeFileSync(blogsJSONPath, JSON.stringify(blogArray));
-        res.status(201).send({ id: newBlog.id });
-      }
-    } else {
-      next(
-        createHttpError(400, "Some errors occurred in req body", { errorsList })
-      );
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-
 // GET API Route --- All Authors
 blogsRouter.get("/", (req, res, next) => {
   try {
@@ -114,7 +86,7 @@ blogsRouter.delete("/:blogId", (req, res, next) => {
     const blogArray = getBlog();
     const blog = blogArray.filter((a) => a.id !== req.params.blogId);
     const modifiedArray = writeBlog(blog);
-    res.send(blog);
+    res.send(modifiedArray);
   } catch (error) {
     next(error);
   }
