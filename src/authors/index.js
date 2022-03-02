@@ -9,7 +9,7 @@ import { newAuthorValidation } from "./validation.js";
 
 const authorsJSONPath = join(
   dirname(fileURLToPath(import.meta.url)),
-  "author.json"
+  "authors.json"
 );
 const getAuthor = () => JSON.parse(fs.readFileSync(authorsJSONPath));
 
@@ -71,7 +71,7 @@ authorsRouter.post("/checkEmail", newAuthorValidation, (req, res, next) => {
 });
 
 // GET API Route --- All Authors
-authorsRouter.get("/", (req, res) => {
+authorsRouter.get("/", (req, res, next) => {
   try {
     const authorsArray = getAuthor();
     if (req.query && req.query.name) {
@@ -88,36 +88,65 @@ authorsRouter.get("/", (req, res) => {
 });
 
 // GET API Route --- 1 Author
-authorsRouter.get("/:authorId", (req, res) => {
-  const fileContent = fs.readFileSync(authorsJSONPath);
-  const authorsArray = JSON.parse(fileContent);
-  const author = authorsArray.find((a) => a.id === req.params.authorId);
-  res.send(author);
+authorsRouter.get("/:authorId", (req, res, next) => {
+  try {
+    const authorsArray = getAuthor();
+    const author = authorsArray.find((a) => a.id === req.params.authorId);
+    if (author) {
+      res.send(author);
+    } else {
+      next(
+        createHttpError(
+          404,
+          `Author with Id ${req.params.authorId} is  not found`
+        )
+      );
+    }
+    res.send(author);
+  } catch (error) {
+    next(error);
+  }
 });
 
 // DELETE API Route --- Delete 1 Author
 
-authorsRouter.delete("/:authorId", (req, res) => {
-  const fileContent = fs.readFileSync(authorsJSONPath);
-  const authorsArray = JSON.parse(fileContent);
-  const author = authorsArray.filter((a) => a.id !== req.params.authorId);
-  const modifiedArray = fs.writeFileSync(
-    authorsJSONPath,
-    JSON.stringify(author)
-  );
-  res.send(modifiedArray);
+authorsRouter.delete("/:authorId", (req, res, next) => {
+  try {
+    const authorsArray = getAuthor();
+    const author = authorsArray.filter((a) => a.id !== req.params.authorId);
+    const modifiedArray = writeAuthor(author);
+    res.send(author);
+  } catch (error) {
+    next(error);
+  }
 });
 
 // PUT API Route --- edit 1 Author
-authorsRouter.put("/:authorId", (req, res) => {
-  const fileContent = fs.readFileSync(authorsJSONPath);
-  const authorsArray = JSON.parse(fileContent);
-  const index = authorsArray.findIndex((a) => a.id === req.params.authorId);
-  const oldAuthor = authorsArray[index];
-  const updatedAuthor = { ...oldAuthor, ...req.body, updatedAt: new Date() };
-  authorsArray[index] = updatedAuthor;
-  fs.writeFileSync(authorsJSONPath, JSON.stringify(authorsArray));
-  res.send(updatedAuthor);
+authorsRouter.put("/:authorId", (req, res, next) => {
+  try {
+    const authorsArray = getAuthor();
+    const index = authorsArray.findIndex((a) => a.id === req.params.authorId);
+    if (index !== -1) {
+      const oldAuthor = authorsArray[index];
+      const updatedAuthor = {
+        ...oldAuthor,
+        ...req.body,
+        updatedAt: new Date(),
+      };
+      authorsArray[index] = updatedAuthor;
+      writeAuthor(updatedAuthor);
+      res.send(updatedAuthor);
+    } else {
+      next(
+        createHttpError(
+          404,
+          `Author with Id ${req.params.authorId} is  not found`
+        )
+      );
+    }
+  } catch (error) {
+    next(error);
+  }
 });
 
 export default authorsRouter;
