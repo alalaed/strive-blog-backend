@@ -6,6 +6,7 @@ import uniqid from "uniqid";
 import createHttpError from "http-errors";
 import { validationResult } from "express-validator";
 import { newAuthorValidation } from "./validation.js";
+import { getAuthors, writeAuthors } from "../lib/fs-tools.js";
 
 const authorsRouter = express.Router();
 
@@ -13,24 +14,24 @@ const authorsJSONPath = join(
   dirname(fileURLToPath(import.meta.url)),
   "authors.json"
 );
-const getAuthor = () => JSON.parse(fs.readFileSync(authorsJSONPath));
+// const getAuthors = () => JSON.parse(fs.readFileSync(authorsJSONPath));
 
-const writeAuthor = (arr) =>
-  fs.writeFileSync(authorsJSONPath, JSON.stringify(arr));
+// const writeAuthor = (arr) =>
+//   fs.writeFileSync(authorsJSONPath, JSON.stringify(arr));
 
 // POST API Route --- All Authors
-authorsRouter.post("/", newAuthorValidation, (req, res, next) => {
+authorsRouter.post("/", newAuthorValidation, async (req, res, next) => {
   try {
     const errorsList = validationResult(req);
     if (errorsList.isEmpty()) {
       const newAuthor = { ...req.body, createdAt: new Date(), id: uniqid() };
 
-      const authorsArray = getAuthor();
+      const authorsArray = await getAuthors();
       console.log(authorsArray);
 
       authorsArray.push(newAuthor);
 
-      writeAuthor(authorsArray);
+      writeAuthors(authorsArray);
 
       res.status(201).send({ id: newAuthor.id });
     } else {
@@ -45,38 +46,44 @@ authorsRouter.post("/", newAuthorValidation, (req, res, next) => {
 
 // Email check
 
-authorsRouter.post("/checkEmail", newAuthorValidation, (req, res, next) => {
-  try {
-    const errorsList = validationResult(req);
-    if (errorsList.isEmpty()) {
-      const newAuthor = { ...req.body, createdAt: new Date(), id: uniqid() };
-      const authorsArray = getAuthor();
-      const exist = authorsArray.some(
-        (author) => author.email === req.body.email
-      );
-      if (exist) {
-        res.status(400).send({
-          message: "user already exists, please use another email address",
-        });
+authorsRouter.post(
+  "/checkEmail",
+  newAuthorValidation,
+  async (req, res, next) => {
+    try {
+      const errorsList = validationResult(req);
+      if (errorsList.isEmpty()) {
+        const newAuthor = { ...req.body, createdAt: new Date(), id: uniqid() };
+        const authorsArray = await getAuthors();
+        const exist = authorsArray.some(
+          (author) => author.email === req.body.email
+        );
+        if (exist) {
+          res.status(400).send({
+            message: "user already exists, please use another email address",
+          });
+        } else {
+          authorsArray.push(newAuthor);
+          fs.writeFileSync(authorsJSONPath, JSON.stringify(authorsArray));
+          res.status(201).send({ id: newAuthor.id });
+        }
       } else {
-        authorsArray.push(newAuthor);
-        fs.writeFileSync(authorsJSONPath, JSON.stringify(authorsArray));
-        res.status(201).send({ id: newAuthor.id });
+        next(
+          createHttpError(400, "Some errors occurred in req body", {
+            errorsList,
+          })
+        );
       }
-    } else {
-      next(
-        createHttpError(400, "Some errors occurred in req body", { errorsList })
-      );
+    } catch (error) {
+      next(error);
     }
-  } catch (error) {
-    next(error);
   }
-});
+);
 
 // GET API Route --- All Authors
-authorsRouter.get("/", (req, res, next) => {
+authorsRouter.get("/", async (req, res, next) => {
   try {
-    const authorsArray = getAuthor();
+    const authorsArray = await getAuthors();
     if (req.query && req.query.name) {
       const filteredAuthors = authorsArray.filter(
         (author) => author.name === req.query.name
@@ -91,9 +98,9 @@ authorsRouter.get("/", (req, res, next) => {
 });
 
 // GET API Route --- 1 Author
-authorsRouter.get("/:authorId", (req, res, next) => {
+authorsRouter.get("/:authorId", async (req, res, next) => {
   try {
-    const authorsArray = getAuthor();
+    const authorsArray = await getAuthors();
     const author = authorsArray.find((a) => a.id === req.params.authorId);
     if (author) {
       res.send(author);
@@ -113,12 +120,12 @@ authorsRouter.get("/:authorId", (req, res, next) => {
 
 // DELETE API Route --- Delete 1 Author
 
-authorsRouter.delete("/:authorId", (req, res, next) => {
+authorsRouter.delete("/:authorId", async (req, res, next) => {
   try {
-    const authorsArray = getAuthor();
+    const authorsArray = await getAuthors();
     console.log(authorsArray);
     const author = authorsArray.filter((a) => a.id !== req.params.authorId);
-    const modifiedArray = writeAuthor(author);
+    const modifiedArray = writeAuthors(author);
     res.send(author);
   } catch (error) {
     next(error);
@@ -126,26 +133,25 @@ authorsRouter.delete("/:authorId", (req, res, next) => {
 });
 
 // PUT API Route --- edit 1 Author
-authorsRouter.put("/:authorId", (req, res, next) => {
+authorsRouter.put("/:authorId", async (req, res, next) => {
   try {
-    const authorsArray = getAuthor();
-    const index = authorsArray.findIndex((a) => a.id === req.params.authorId);
+    const authors = await getAuthors();
+    const index = authors.findIndex(
+      (author) => author.id === req.params.authorId
+    );
     if (index !== -1) {
-      const oldAuthor = authorsArray[index];
+      const oldAuthor = authors[index];
       const updatedAuthor = {
         ...oldAuthor,
         ...req.body,
         updatedAt: new Date(),
       };
-      authorsArray[index] = updatedAuthor;
-      writeAuthor(updatedAuthor);
+      authors[index] = updatedAuthor;
+      writeAuthors(authors);
       res.send(updatedAuthor);
     } else {
       next(
-        createHttpError(
-          404,
-          `Author with Id ${req.params.authorId} is  not found`
-        )
+        createHttpError(404, `Author with id ${req.params.authorId} not found!`)
       );
     }
   } catch (error) {
